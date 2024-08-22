@@ -1,0 +1,16 @@
+[package]
+name = "snavig"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.16", features = ["derive"] }
+oxipng = "9.1.2"
+regex = "1.10.6"
+thiserror = "1.0.63"
+
+[build-dependencies]
+bindgen = "0.70.0"
+cc = "1.1.13"
+pkg-config = "0.3.30"
