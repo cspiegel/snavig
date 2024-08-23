@@ -435,7 +435,7 @@ impl Blorb {
         }
 
         let options = oxipng::Options::from_preset(6);
-        Self::compress_png_chunks(&mut converted_picts, &options, "Compressing BPal images")?;
+        Self::compress_png_chunks(converted_picts.values_mut(), &options, "Compressing BPal images")?;
         pict_resources.extend(converted_picts);
 
         self.chunks.push(Chunk::new(b"BPal", bpal_chunkdata));
@@ -523,15 +523,18 @@ impl Blorb {
                 options.palette_reduction = false;
             }
 
-            Self::compress_png_chunks(picts, &options, "Compressing images")
+            Self::compress_png_chunks(picts.values_mut(), &options, "Compressing images")
         } else {
             Ok((0, 0))
         }
     }
 
-    fn compress_png_chunks(picts: &mut BTreeMap<u32, Chunk>, options: &oxipng::Options, msg: &str) -> Result<(usize, usize), Error> {
+    fn compress_png_chunks<'a, P>(picts: P, options: &oxipng::Options, msg: &str) -> Result<(usize, usize), Error>
+    where
+        P: IntoIterator<Item = &'a mut Chunk>
+    {
         let mut picts = picts
-            .values_mut()
+            .into_iter()
             .filter(|chunk| chunk.typeid == b"PNG ".into())
             .collect::<Vec<_>>();
 
