@@ -265,14 +265,35 @@ impl Blorb {
             b"BPal",
         ];
 
-        let mut seen_unique_chunks = BTreeSet::new();
+        // Per IFF:
+        //
+        // A "type ID", "property name", "FORM type", or any other IFF identifier is a 32-bit
+        // value: the concatenation of four ASCII characters in the range R S (SP, hex 20) through
+        // R~S (hex 7E). Spaces (hex 20) should not precede printing characters; trailing spaces
+        // are ok. Control characters are forbidden.
+        let is_valid_typeid = |typeid: &[u8; 4]| -> bool {
+            typeid.iter().try_fold(false, |last_was_space, b| {
+                if *b == b' ' {
+                    Some(true)
+                } else if *b >= 0x21 && *b <= 0x7e && !last_was_space {
+                    Some(false)
+                } else {
+                    None
+                }
+            }).is_some()
+        };
 
+        let mut seen_unique_chunks = BTreeSet::new();
         let mut chunk_offsets = BTreeSet::new();
 
         while f.stream_position()? < u64::from(size) + 8 {
             let pos = f.stream_position()?;
 
             let chunktype = f.typeid()?;
+
+            if !is_valid_typeid(chunktype.as_bytes()) {
+                eprintln!("warning: invalid chunk type {chunktype} at offset 0x{pos:x}");
+            }
 
             if chunktype == b"RIdx".into() {
                 return Err(Error::DuplicateRIdx);
