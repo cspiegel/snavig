@@ -2,7 +2,7 @@ use std::cmp;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
-use std::io::{self, Read, Seek, Write};
+use std::io::{self, IsTerminal, Read, Seek, Write};
 use std::num;
 use std::path;
 use std::sync::atomic;
@@ -578,9 +578,11 @@ impl Blorb {
                 let i = i.fetch_add(1, atomic::Ordering::Relaxed) + 1;
                 {
                     let mut stdout = io::stdout().lock();
-                    write!(stdout, "\x1b[K\r")?;
-                    write!(stdout, "{msg}: {i}/{pngs}")?;
-                    stdout.flush()?;
+                    if stdout.is_terminal() {
+                        write!(stdout, "\x1b[K\r")?;
+                        write!(stdout, "{msg}: {i}/{pngs}")?;
+                        stdout.flush()?;
+                    }
                 }
                 original_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
                 chunk.data = oxipng::optimize_from_memory(&chunk.data, options)?;
