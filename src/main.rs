@@ -530,14 +530,16 @@ impl Blorb {
     }
 
     fn compress_png_chunks(picts: &mut BTreeMap<u32, Chunk>, options: &oxipng::Options, msg: &str) -> Result<(usize, usize), Error> {
-        let pngs = picts
-            .values()
+        let mut picts = picts
+            .values_mut()
             .filter(|chunk| chunk.typeid == b"PNG ".into())
-            .count();
+            .collect::<Vec<_>>();
 
-        if pngs == 0 {
+        if picts.is_empty() {
             return Ok((0, 0));
         }
+
+        let pngs = picts.len();
 
         let original_size = atomic::AtomicUsize::new(0);
         let new_size = atomic::AtomicUsize::new(0);
@@ -547,22 +549,18 @@ impl Blorb {
         // run several compressions in parallel here anyway, to ensure
         // all cores are used.
         picts
-            .values_mut()
-            .collect::<Vec<_>>()
             .par_iter_mut()
             .try_for_each(|chunk| -> Result<(), Error> {
-                if chunk.typeid == b"PNG ".into() {
-                    let i = i.fetch_add(1, atomic::Ordering::Relaxed) + 1;
-                    {
-                        let mut stdout = io::stdout().lock();
-                        write!(stdout, "\x1b[K\r")?;
-                        write!(stdout, "{msg}: {i}/{pngs}")?;
-                        stdout.flush()?;
-                    }
-                    original_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
-                    chunk.data = oxipng::optimize_from_memory(&chunk.data, options)?;
-                    new_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
+                let i = i.fetch_add(1, atomic::Ordering::Relaxed) + 1;
+                {
+                    let mut stdout = io::stdout().lock();
+                    write!(stdout, "\x1b[K\r")?;
+                    write!(stdout, "{msg}: {i}/{pngs}")?;
+                    stdout.flush()?;
                 }
+                original_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
+                chunk.data = oxipng::optimize_from_memory(&chunk.data, options)?;
+                new_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
 
                 Ok(())
         })?;
