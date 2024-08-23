@@ -370,7 +370,7 @@ impl Blorb {
 
     fn add_bpal(&mut self) -> Result<(), Error> {
         let pict_resources = self.resources.get_mut(&ResourceUsage::Pict)
-            .ok_or_else(|| Error::NoPictures)?;
+            .ok_or(Error::NoPictures)?;
 
         // Converted IDs start at 1000, unless the Blorb file contains
         // larger IDs, at which point the converted IDs start at the
@@ -393,7 +393,7 @@ impl Blorb {
         for apal_id in Self::find_apal_images(&self.chunks)? {
             let chunk = pict_resources
                 .get(&apal_id)
-                .ok_or_else(|| Error::MissingAPalImage(apal_id))?;
+                .ok_or(Error::MissingAPalImage(apal_id))?;
 
             let image = image::new(&chunk.data)?;
 
