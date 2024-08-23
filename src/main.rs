@@ -498,15 +498,14 @@ impl Blorb {
             (r"^[\x01-\x08].{17}\d{6}", b"ZCOD"),
             (r"^Glul", b"GLUL"),
             (r"^TADS2 bin\x0a\x0d\x1a", b"TAD2"),
-            (r"^T3-image\x0d\x0a\x1a(\x01|\x02)\x00", b"TAD3"),
+            (r"^T3-image\x0d\x0a\x1a[\x01\x02]\x00", b"TAD3"),
             (r"^MaSc.{4}\x00\x00\x00\x2a\x00[\x00\x01\x02\x03\x04]", b"MAGS"),
-            (r"^\x3c\x42\x3f\xc9\x6a\x87\xc2\xcf[\x93\x94]\x45", b"ADRI"),
-            (r"^\x3c\x42\x3f\xc9\x6a\x87\xc2\xcf[\x92]\x45", b"ADRI"),
+            (r"^\x3c\x42\x3f\xc9\x6a\x87\xc2\xcf[\x92\x93\x94]\x45", b"ADRI"),
             (r"^\x58\xc7\xc1\x51", b"AGT "),
             (r"^.{2}\xa0\x9d\x8b\x8e\x88\x8e", b"ADVS"),
             (r"^[\x16\x18\x19\x1e\x1f].{2}\d\d-\d\d-\d\d", b"HUGO"),
             (r"^.{3}\x9b\x36\x21.{18}\xff", b"LEVE"),
-            (r"^(\x02\x07\x05|\x02\x08[\x01\x02\x03\x07])", b"ALAN"),
+            (r"^\x02(\x07\x05|\x08[\x01\x02\x03\x07])", b"ALAN"),
             (r"^ALAN\x03", b"ALAN"),
         ];
 
