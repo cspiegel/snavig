@@ -566,7 +566,7 @@ impl Blorb {
                 new_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
 
                 Ok(())
-        })?;
+            })?;
 
         println!();
 
