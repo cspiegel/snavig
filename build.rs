@@ -14,7 +14,7 @@ fn build_c_library() {
         .file("c_src/image.cpp")
         .warnings(true)
         .extra_warnings(true)
-        .std("c++20");
+        .std("c++17");
 
     let config = pkg_config::Config::new();
     let library = config
