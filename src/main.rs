@@ -5,8 +5,10 @@ use std::fs;
 use std::io::{self, Read, Seek, Write};
 use std::num;
 use std::path;
+use std::sync::atomic;
 
 use clap::Parser;
+use rayon::prelude::*;
 
 mod image;
 
@@ -537,24 +539,38 @@ impl Blorb {
             return Ok((0, 0));
         }
 
-        let mut original_size = 0;
-        let mut new_size = 0;
-        let mut i = 0;
+        let original_size = atomic::AtomicUsize::new(0);
+        let new_size = atomic::AtomicUsize::new(0);
+        let i = atomic::AtomicUsize::new(0);
 
-        for chunk in picts.values_mut() {
-            if chunk.typeid == b"PNG ".into() {
-                i += 1;
-                print!("\x1b[K\r");
-                print!("{msg}: {i}/{pngs}");
-                io::stdout().flush()?;
-                original_size += chunk.data.len();
-                chunk.data = oxipng::optimize_from_memory(&chunk.data, options)?;
-                new_size += chunk.data.len();
-            }
-        }
+        // oxipng compresses in parallel, but it can be much faster to
+        // run several compressions in parallel here anyway, to ensure
+        // all cores are used.
+        picts
+            .values_mut()
+            .collect::<Vec<_>>()
+            .par_iter_mut()
+            .try_for_each(|chunk| -> Result<(), Error> {
+                if chunk.typeid == b"PNG ".into() {
+                    let i = i.fetch_add(1, atomic::Ordering::Relaxed) + 1;
+                    {
+                        let mut stdout = io::stdout().lock();
+                        write!(stdout, "\x1b[K\r")?;
+                        write!(stdout, "{msg}: {i}/{pngs}")?;
+                        stdout.flush()?;
+                    }
+                    original_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
+                    chunk.data = oxipng::optimize_from_memory(&chunk.data, options)?;
+                    new_size.fetch_add(chunk.data.len(), atomic::Ordering::Relaxed);
+                }
+
+                Ok(())
+        })?;
 
         println!();
 
+        let original_size = original_size.load(atomic::Ordering::Relaxed);
+        let new_size = new_size.load(atomic::Ordering::Relaxed);
         Ok((original_size, new_size))
     }
 
