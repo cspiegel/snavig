@@ -349,7 +349,7 @@ impl Blorb {
                         let typedata = TypeID::from(&[chunk[0], chunk[1], chunk[2], chunk[3]]);
                         eprintln!("warning: copying unknown FORM chunk: {typedata} at offset 0x{pos:x}");
                     } else {
-                        eprintln!("warning: copying unknown chunk: {chunktype} at offset {pos:x}");
+                        eprintln!("warning: copying unknown chunk: {chunktype} at offset 0x{pos:x}");
                     }
                 }
 
