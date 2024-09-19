@@ -26,7 +26,8 @@ CImage *new_image(const unsigned char *data, std::size_t len)
     return new CImage { std::move(image) };
 }
 
-void delete_image(CImage *image) {
+void delete_image(CImage *image)
+{
     delete image;
 }
 
