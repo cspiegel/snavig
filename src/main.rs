@@ -138,7 +138,7 @@ impl Chunk {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ResourceUsage {
     Pict,
     Snd,
@@ -246,7 +246,7 @@ impl Blorb {
                 }
             }
 
-            resource_by_offset.insert(u64::from(start), (usage.clone(), number));
+            resource_by_offset.insert(u64::from(start), (usage, number));
 
             ridx.push(Resource {
                 usage,
@@ -359,7 +359,7 @@ impl Blorb {
 
                 chunk_offsets.insert(pos);
 
-                resources.entry(usage.clone())
+                resources.entry(*usage)
                     .or_default()
                     .insert(*number, Chunk::new(chunktype, chunk));
             } else {
