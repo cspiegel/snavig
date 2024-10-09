@@ -38,7 +38,7 @@ pub fn new(data: &[u8]) -> Result<Image, Error> {
 pub fn convert_palette(apal_image: &Image, palette: &Image) -> Result<Vec<u8>, Error> {
     let vec = unsafe { image_impl::convert_palette_c(apal_image.image, palette.image) };
 
-    match unsafe { *vec }.error {
+    match vec.error {
         image_impl::CError_PaletteNotIndexed => return Err(Error::PaletteNotIndexed),
         image_impl::CError_UnableToOpenQBuffer => return Err(Error::UnableToOpenQBuffer),
         image_impl::CError_UnableToSavePNG => return Err(Error::UnableToSavePNG),
@@ -46,7 +46,7 @@ pub fn convert_palette(apal_image: &Image, palette: &Image) -> Result<Vec<u8>, E
         _ => return Err(Error::Unknown),
     }
 
-    let slice = unsafe { slice::from_raw_parts_mut((*vec).data, (*vec).len) };
+    let slice = unsafe { slice::from_raw_parts_mut(vec.data, vec.len) };
     let converted = Vec::from(slice);
 
     unsafe { image_impl::delete_vector(vec) };

@@ -31,13 +31,17 @@ void delete_image(CImage *image)
     delete image;
 }
 
-Vector *convert_palette_c(const CImage *apal_image_, const CImage *palette)
+Vector convert_palette_c(const CImage *apal_image_, const CImage *palette)
 {
-    auto *vector = new Vector;
+    Vector vector = {
+        .data = nullptr,
+        .len = 0,
+        .error = None,
+    };
 
     QImage apal_image = apal_image_->image;
     if (palette->image.format() != QImage::Format_Indexed8) {
-        vector->error = PaletteNotIndexed;
+        vector.error = PaletteNotIndexed;
         return vector;
     }
 
@@ -54,31 +58,28 @@ Vector *convert_palette_c(const CImage *apal_image_, const CImage *palette)
     QBuffer buffer(&ba);
 
     if (!buffer.open(QIODevice::WriteOnly)) {
-        vector->error = UnableToOpenQBuffer;
+        vector.error = UnableToOpenQBuffer;
         return vector;
     }
 
     if (!apal_image.save(&buffer, "PNG", 100)) {
-        vector->error = UnableToSavePNG;
+        vector.error = UnableToSavePNG;
         return vector;
     }
 
     try {
-        vector->data = new unsigned char[ba.size()];
+        vector.data = new unsigned char[ba.size()];
     } catch (const std::bad_alloc &) {
-        delete vector;
         throw;
     }
 
-    vector->error = None;
-    vector->len = ba.size();
-    std::copy(ba.begin(), ba.end(), vector->data);
+    vector.len = ba.size();
+    std::copy(ba.begin(), ba.end(), vector.data);
 
     return vector;
 }
 
-void delete_vector(Vector *vector)
+void delete_vector(Vector vector)
 {
-    delete [] vector->data;
-    delete vector;
+    delete [] vector.data;
 }
