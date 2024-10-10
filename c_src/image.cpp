@@ -67,12 +67,7 @@ Vector convert_palette_c(const CImage *apal_image_, const CImage *palette)
         return vector;
     }
 
-    try {
-        vector.data = new unsigned char[ba.size()];
-    } catch (const std::bad_alloc &) {
-        throw;
-    }
-
+    vector.data = new unsigned char[ba.size()];
     vector.len = ba.size();
     std::copy(ba.begin(), ba.end(), vector.data);
 
