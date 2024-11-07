@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstddef>
-#include <new>
 #include <utility>
 
 #include <QBuffer>
