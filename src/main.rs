@@ -590,7 +590,9 @@ impl Blorb {
                 Ok(())
             })?;
 
-        println!();
+        if io::stdout().is_terminal() {
+            println!();
+        }
 
         let original_size = original_size.load(atomic::Ordering::Relaxed);
         let new_size = new_size.load(atomic::Ordering::Relaxed);
