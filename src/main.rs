@@ -348,7 +348,7 @@ impl Blorb {
                 }
 
                 if *usage == ResourceUsage::Exec {
-                    if resources.get(usage).map_or(false, |map| !map.is_empty()) {
+                    if resources.get(usage).is_some_and(|map| !map.is_empty()) {
                         return Err(Error::DuplicateExec);
                     }
 
