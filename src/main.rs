@@ -240,7 +240,8 @@ impl Blorb {
             let number = f.read32()?;
             let start = u64::from(f.read32()?);
 
-            if resource_by_offset.insert(start, (usage, number)).is_some() {
+            let resource = Resource::new(usage, number);
+            if resource_by_offset.insert(start, resource).is_some() {
                 return Err(Error::DuplicateResourceOffsets);
             }
         }
@@ -328,24 +329,23 @@ impl Blorb {
                 }
             };
 
-            if let Some((usage, number)) = resource_by_offset.get(&pos) {
+            if let Some(resource) = resource_by_offset.get(&pos) {
                 if let Some(expected_usage) = expected_usage {
-                    if expected_usage != *usage {
-                        eprintln!("warning: RIdx specifies usage {} for resource {}, but expected usage is {}", TypeID::from(usage), number, expected_usage);
+                    if expected_usage != resource.usage {
+                        eprintln!("warning: RIdx specifies usage {} for resource {}, but expected usage is {}", TypeID::from(resource.usage), resource.number, expected_usage);
                     }
                 } else {
-                    eprintln!("warning: RIdx specifies usage {} for resource {}, but {} has no standard usage", TypeID::from(usage), number, chunktype);
+                    eprintln!("warning: RIdx specifies usage {} for resource {}, but {} has no standard usage", TypeID::from(resource.usage), resource.number, chunktype);
                 }
 
-                if *usage == ResourceUsage::Exec && *number != 0 {
-                    return Err(Error::InvalidExec(chunktype, pos, *number));
+                if resource.usage == ResourceUsage::Exec && resource.number != 0 {
+                    return Err(Error::InvalidExec(chunktype, pos, resource.number));
                 }
 
                 chunk_offsets.insert(pos);
 
-                let resource = Resource::new(*usage, *number);
-                if resources.insert(resource, Chunk::new(chunktype, chunk)).is_some() {
-                    return Err(Error::DuplicateResources(resource, pos));
+                if resources.insert(*resource, Chunk::new(chunktype, chunk)).is_some() {
+                    return Err(Error::DuplicateResources(*resource, pos));
                 }
             } else {
                 if let Some(expected_usage) = expected_usage {
@@ -363,9 +363,9 @@ impl Blorb {
             }
         }
 
-        for (start, (usage, number)) in resource_by_offset {
+        for (start, resource) in resource_by_offset {
             if !chunk_offsets.contains(&start) {
-                return Err(Error::DanglingResource(Resource::new(usage, number), start));
+                return Err(Error::DanglingResource(resource, start));
             }
         }
 
