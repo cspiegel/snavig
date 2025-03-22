@@ -26,8 +26,6 @@ enum Error {
     DuplicateResourceOffsets,
     #[error("two entries for the same resource: {0} @0x{1:x}")]
     DuplicateResources(Resource, u64),
-    #[error("duplicate Exec (story) resource chunks")]
-    DuplicateExec,
     #[error("Exec resource chunk {0} at offset 0x{1:x} has id {2}, not 0")]
     InvalidExec(TypeID, u64, u32),
     #[error("resource {0} @0x{1:x} references non-existent chunk")]
@@ -189,10 +187,19 @@ impl TryFrom<TypeID> for ResourceUsage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Resource {
     usage: ResourceUsage,
     number: u32,
+}
+
+impl Resource {
+    fn new(usage: ResourceUsage, number: u32) -> Resource {
+        Resource {
+            usage,
+            number,
+        }
+    }
 }
 
 impl fmt::Display for Resource {
@@ -202,8 +209,7 @@ impl fmt::Display for Resource {
 }
 
 struct Blorb {
-    ridx: Vec<Resource>,
-    resources: BTreeMap<ResourceUsage, BTreeMap<u32, Chunk>>,
+    resources: BTreeMap<Resource, Chunk>,
     chunks: Vec<Chunk>,
 }
 
@@ -229,7 +235,6 @@ impl Blorb {
 
         let mut resource_by_offset = BTreeMap::new();
 
-        let mut ridx: Vec<Resource> = vec![];
         for _ in 0..num {
             let usage = f.typeid()?.try_into()?;
             let number = f.read32()?;
@@ -238,20 +243,9 @@ impl Blorb {
             if resource_by_offset.insert(start, (usage, number)).is_some() {
                 return Err(Error::DuplicateResourceOffsets);
             }
-
-            for resource in &ridx {
-                if resource.usage == usage && resource.number == number {
-                    return Err(Error::DuplicateResources(resource.clone(), start));
-                }
-            }
-
-            ridx.push(Resource {
-                usage,
-                number,
-            })
         }
 
-        let mut resources: BTreeMap<ResourceUsage, BTreeMap<u32, Chunk>> = BTreeMap::new();
+        let mut resources: BTreeMap<Resource, Chunk> = BTreeMap::new();
         let mut chunks = vec![];
 
         let known_chunks = [
@@ -343,21 +337,16 @@ impl Blorb {
                     eprintln!("warning: RIdx specifies usage {} for resource {}, but {} has no standard usage", TypeID::from(usage), number, chunktype);
                 }
 
-                if *usage == ResourceUsage::Exec {
-                    if resources.get(usage).is_some_and(|map| !map.is_empty()) {
-                        return Err(Error::DuplicateExec);
-                    }
-
-                    if *number != 0 {
-                        return Err(Error::InvalidExec(chunktype, pos, *number));
-                    }
+                if *usage == ResourceUsage::Exec && *number != 0 {
+                    return Err(Error::InvalidExec(chunktype, pos, *number));
                 }
 
                 chunk_offsets.insert(pos);
 
-                resources.entry(*usage)
-                    .or_default()
-                    .insert(*number, Chunk::new(chunktype, chunk));
+                let resource = Resource::new(*usage, *number);
+                if resources.insert(resource, Chunk::new(chunktype, chunk)).is_some() {
+                    return Err(Error::DuplicateResources(resource, pos));
+                }
             } else {
                 if let Some(expected_usage) = expected_usage {
                     eprintln!("warning: found {chunktype} chunk at offset 0x{pos:x}, but it is not referenced in RIdx (expected usage: {expected_usage})");
@@ -376,33 +365,35 @@ impl Blorb {
 
         for (start, (usage, number)) in resource_by_offset {
             if !chunk_offsets.contains(&start) {
-                let resource = Resource {
-                    usage,
-                    number,
-                };
-                return Err(Error::DanglingResource(resource, start));
+                return Err(Error::DanglingResource(Resource::new(usage, number), start));
             }
         }
 
         Ok(Blorb {
-            ridx,
             resources,
             chunks,
         })
     }
 
     fn add_bpal(&mut self) -> Result<(), Error> {
-        let pict_resources = self.resources.get_mut(&ResourceUsage::Pict)
-            .ok_or(Error::NoPictures)?;
+        let pict_resources = self.resources
+            .iter()
+            .filter(|(resource, _)| resource.usage == ResourceUsage::Pict)
+            .map(|(resource, chunk)| (resource.number, chunk))
+            .collect::<BTreeMap<_, _>>();
+
+        if pict_resources.is_empty() {
+            return Err(Error::NoPictures);
+        }
 
         // Converted IDs start at 1000, unless the Blorb file contains
         // larger IDs, at which point the converted IDs start at the
         // largest ID plus one.
         let mut converted_id = 1000;
 
-        for entry in &self.ridx {
-            if entry.usage == ResourceUsage::Pict {
-                converted_id = cmp::max(converted_id, entry.number.plus(1)?);
+        for resource in self.resources.keys() {
+            if resource.usage == ResourceUsage::Pict {
+                converted_id = cmp::max(converted_id, resource.number.plus(1)?);
             }
         }
 
@@ -432,7 +423,7 @@ impl Blorb {
         let mut bpal_chunkdata = Vec::new();
 
         println!("Converting images...");
-        for (id, chunk) in &mut *pict_resources {
+        for (id, chunk) in &pict_resources {
             if chunk.typeid == b"PNG ".into() && !apal_images.contains_key(id) {
                 let palette_image = image::new(&chunk.data)?;
                 for (apal_id, apal_image) in &apal_images {
@@ -457,7 +448,9 @@ impl Blorb {
 
         let options = oxipng::Options::from_preset(6);
         Self::compress_png_chunks(converted_picts.values_mut(), &options, "Compressing BPal images")?;
-        pict_resources.extend(converted_picts);
+        for (number, chunk) in converted_picts {
+            self.resources.insert(Resource::new(ResourceUsage::Pict, number), chunk);
+        }
 
         self.chunks.push(Chunk::new(b"BPal", bpal_chunkdata));
 
@@ -488,10 +481,8 @@ impl Blorb {
     }
 
     pub fn add_exec(&mut self, data: &[u8]) -> Result<(), Error> {
-        if let Some(v) = self.resources.get(&ResourceUsage::Exec) {
-            if !v.is_empty() {
-                return Err(Error::ExecExists);
-            }
+        if self.resources.keys().any(|resource| resource.usage == ResourceUsage::Exec) {
+            return Err(Error::ExecExists);
         }
 
         let magic = [
@@ -520,10 +511,7 @@ impl Blorb {
         });
 
         if let Some((_, typeid)) = typeid {
-            let chunks = [
-                (0, Chunk::new(typeid, data))
-            ].into_iter().collect();
-            self.resources.insert(ResourceUsage::Exec, chunks);
+            self.resources.insert(Resource::new(ResourceUsage::Exec, 0), Chunk::new(typeid, data));
             Ok(())
         } else {
             Err(Error::UnknownStoryType)
@@ -531,22 +519,23 @@ impl Blorb {
     }
 
     pub fn compress_images(&mut self) -> Result<(usize, usize), Error> {
-        if let Some(picts) = self.resources.get_mut(&ResourceUsage::Pict) {
-            let mut options = oxipng::Options::from_preset(6);
+        let picts = self.resources
+            .iter_mut()
+            .filter(|(resource, _)| resource.usage == ResourceUsage::Pict)
+            .map(|(_, chunk)| chunk);
 
-            // If there is a non-empty APal chunk, don't touch images'
-            // palettes, as that will break its functionality. In the
-            // absence of an APal chunk (or if the chunk is empty), the
-            // specific layouts of images' palettes are not important.
-            if matches!(Self::find_apal_images(&self.chunks), Ok(images) if !images.is_empty()) {
-                options.color_type_reduction = false;
-                options.palette_reduction = false;
-            }
+        let mut options = oxipng::Options::from_preset(6);
 
-            Self::compress_png_chunks(picts.values_mut(), &options, "Compressing images")
-        } else {
-            Ok((0, 0))
+        // If there is a non-empty APal chunk, don't touch images'
+        // palettes, as that will break its functionality. In the
+        // absence of an APal chunk (or if the chunk is empty), the
+        // specific layouts of images' palettes are not important.
+        if matches!(Self::find_apal_images(&self.chunks), Ok(images) if !images.is_empty()) {
+            options.color_type_reduction = false;
+            options.palette_reduction = false;
         }
+
+        Self::compress_png_chunks(picts, &options, "Compressing images")
     }
 
     fn compress_png_chunks<'a, P>(picts: P, options: &oxipng::Options, msg: &str) -> Result<(usize, usize), Error>
@@ -604,22 +593,15 @@ impl Blorb {
 
         f.write_all(b"FORM....IFRSRIdx")?;
 
-        let ridx_size = self.resources.values()
-            .try_fold(0u32, |acc, chunks| {
-                let size = u32::try_from(chunks.len()).ok()?;
-                acc.checked_add(size)
-            })
-            .ok_or(Error::IntegerOverflow)?;
+        let ridx_size = u32::try_from(self.resources.len())?;
 
         f.write32(4.plus(ridx_size.times(12)?)?)?;
         f.write32(ridx_size)?;
 
-        for (resource, chunks) in &self.resources {
-            for id in chunks.keys() {
-                f.write_all(resource.as_bytes())?;
-                f.write32(*id)?;
-                f.write32(0)?; // placeholder
-            }
+        for resource in self.resources.keys() {
+            f.write_all(resource.usage.as_bytes())?;
+            f.write32(resource.number)?;
+            f.write32(0)?; // placeholder
         }
 
         let write_chunk = |f: &mut fs::File, chunk: &Chunk| -> Result<(), Error> {
@@ -637,7 +619,7 @@ impl Blorb {
             write_chunk(&mut f, chunk)?;
         }
 
-        for (i, (_, chunk)) in self.resources.values().flatten().enumerate() {
+        for (i, chunk) in self.resources.values().enumerate() {
             let offset = f.stream_position()?;
             f.seek(io::SeekFrom::Start((0x20 + (i * 12)).try_into()?))?;
             f.write32(offset.try_into()?)?;
