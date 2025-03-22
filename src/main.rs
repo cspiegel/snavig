@@ -24,14 +24,14 @@ enum Error {
     InvalidResourceUsage(TypeID),
     #[error("two resources point to the same offset (legal, but unsupported)")]
     DuplicateResourceOffsets,
-    #[error("two entries for the same resource: {0}")]
-    DuplicateResources(Resource),
+    #[error("two entries for the same resource: {0} @0x{1:x}")]
+    DuplicateResources(Resource, u64),
     #[error("duplicate Exec (story) resource chunks")]
     DuplicateExec,
     #[error("Exec resource chunk {0} at offset 0x{1:x} has id {2}, not 0")]
     InvalidExec(TypeID, u64, u32),
-    #[error("resource {0} references non-existent chunk")]
-    DanglingResource(Resource),
+    #[error("resource {0} @0x{1:x} references non-existent chunk")]
+    DanglingResource(Resource, u64),
     #[error("no Pict entries")]
     NoPictures,
     #[error("this file already has a BPal chunk")]
@@ -193,12 +193,11 @@ impl TryFrom<TypeID> for ResourceUsage {
 struct Resource {
     usage: ResourceUsage,
     number: u32,
-    start: u32,
 }
 
 impl fmt::Display for Resource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "number {} ({}), offset 0x{:x}", self.number, self.usage, self.start)
+        write!(f, "number {} ({})", self.number, self.usage)
     }
 }
 
@@ -234,24 +233,21 @@ impl Blorb {
         for _ in 0..num {
             let usage = f.typeid()?.try_into()?;
             let number = f.read32()?;
-            let start = f.read32()?;
+            let start = u64::from(f.read32()?);
 
-            for resource in &ridx {
-                if resource.start == start {
-                    return Err(Error::DuplicateResourceOffsets);
-                }
-
-                if resource.usage == usage && resource.number == number {
-                    return Err(Error::DuplicateResources(resource.clone()));
-                }
+            if resource_by_offset.insert(start, (usage, number)).is_some() {
+                return Err(Error::DuplicateResourceOffsets);
             }
 
-            resource_by_offset.insert(u64::from(start), (usage, number));
+            for resource in &ridx {
+                if resource.usage == usage && resource.number == number {
+                    return Err(Error::DuplicateResources(resource.clone(), start));
+                }
+            }
 
             ridx.push(Resource {
                 usage,
                 number,
-                start,
             })
         }
 
@@ -378,9 +374,13 @@ impl Blorb {
             }
         }
 
-        for resource in &ridx {
-            if !chunk_offsets.contains(&resource.start.into()) {
-                return Err(Error::DanglingResource(resource.clone()));
+        for (start, (usage, number)) in resource_by_offset {
+            if !chunk_offsets.contains(&start) {
+                let resource = Resource {
+                    usage,
+                    number,
+                };
+                return Err(Error::DanglingResource(resource, start));
             }
         }
 
