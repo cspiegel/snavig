@@ -25,7 +25,7 @@ is meant to augment/update existing Blorb files in specific ways.
 Requirements:
 
 * Rust (1.77.0 or newer)
-* A C++20 compiler
+* A C++17 compiler
 * Qt (5 or 6)
 * A Unix-like environment, including MinGW
 
