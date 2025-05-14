@@ -47,10 +47,10 @@ To run Snavig:
 
 Options are:
 
-* `a`, `--add-bpal`: Add a BPal entry
-* `s`, `--story <STORY>`: Add the specified story
-* `c`, `--compress-images`: Losslessly compress existing PNG images
-* `o`, `--outfile <OUTFILE>`: The Blorb file to create [default: out.blb]
+* `-a`, `--add-bpal`: Add a BPal entry
+* `-s`, `--story <STORY>`: Add the specified story
+* `-c`, `--compress-images`: Losslessly compress existing PNG images
+* `-o`, `--outfile <OUTFILE>`: The Blorb file to create [default: out.blb]
 
 Snavig will detect a lot of inconsistencies in the Blorb file, either aborting
 if the issue is egregious enough, or warning otherwise. Warnings are indicative
