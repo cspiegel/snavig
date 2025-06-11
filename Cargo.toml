@@ -12,6 +12,6 @@ regex = "1.10.6"
 thiserror = "2.0.0"
 
 [build-dependencies]
-bindgen = "0.71.1"
+bindgen = "0.72.0"
 cc = "1.1.13"
 pkg-config = "0.3.30"
