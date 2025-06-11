@@ -11,6 +11,8 @@ enum CError {
     PaletteNotIndexed,
     UnableToOpenQBuffer,
     UnableToSavePNG,
+    InvalidPNG,
+    ExistingGamma,
 };
 
 struct Vector {

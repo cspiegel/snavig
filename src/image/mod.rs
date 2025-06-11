@@ -12,6 +12,10 @@ pub enum Error {
     UnableToOpenQBuffer,
     #[error("unable to store image as PNG")]
     UnableToSavePNG,
+    #[error("invalid PNG file")]
+    InvalidPNG,
+    #[error("image already has gamma information")]
+    ExistingGamma,
     #[error("unknown error in image code")]
     Unknown,
 }
@@ -42,6 +46,8 @@ pub fn convert_palette(apal_image: &Image, palette: &Image) -> Result<Vec<u8>, E
         image_impl::CError_PaletteNotIndexed => return Err(Error::PaletteNotIndexed),
         image_impl::CError_UnableToOpenQBuffer => return Err(Error::UnableToOpenQBuffer),
         image_impl::CError_UnableToSavePNG => return Err(Error::UnableToSavePNG),
+        image_impl::CError_InvalidPNG => return Err(Error::InvalidPNG),
+        image_impl::CError_ExistingGamma => return Err(Error::ExistingGamma),
         image_impl::CError_None => (),
         _ => return Err(Error::Unknown),
     }

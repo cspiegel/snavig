@@ -34,6 +34,10 @@ replacement image ID, which has the palette pre-applied. In short,
 "replacement" is the ID of an image representing "adaptive" with the
 "current" palette applied.
 
+In addition, if there is any gamma correction information in the palette
+image (which effectively means the gAMA chunk in a PNG file), it should
+also be copied into the replacement image.
+
 The "Current Palette" should be tracked as in APal. Whenever a picture
 is plotted, the BPal chunk should be consulted. If there is an entry
 corresponding to the current palette and the requested image, the
