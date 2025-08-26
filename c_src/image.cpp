@@ -121,7 +121,7 @@ Vector convert_palette_c(const CImage *apal_image_, const CImage *palette)
     auto dst = apal_image.colorTable();
     auto src = palette->image.colorTable();
 
-    for (int i = 2; i < qMin(src.size(), dst.size()); i++) {
+    for (qsizetype i = 2; i < qMin(src.size(), dst.size()); i++) {
         dst[i] = src[i];
     }
 
