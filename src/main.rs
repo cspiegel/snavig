@@ -433,7 +433,7 @@ impl Blorb {
                         Some(val) => *val,
                         None => {
                             converted_picts.insert(converted_id, Chunk::new(b"PNG ", converted.as_slice()));
-                            converted_id += 1;
+                            converted_id = converted_id.plus(1)?;
                             image_cache.insert(converted, converted_id - 1);
                             converted_id - 1
                         }
