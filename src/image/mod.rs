@@ -52,7 +52,7 @@ pub fn convert_palette(apal_image: &Image, palette: &Image) -> Result<Vec<u8>, E
         _ => return Err(Error::Unknown),
     }
 
-    let slice = unsafe { slice::from_raw_parts_mut(vec.data, vec.len) };
+    let slice = unsafe { slice::from_raw_parts(vec.data, vec.len) };
     let converted = Vec::from(slice);
 
     unsafe { image_impl::delete_vector(vec) };
