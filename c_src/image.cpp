@@ -79,7 +79,7 @@ std::vector<std::uint8_t> add_gamma_chunk(const std::vector<std::uint8_t> &png_d
     }
 
     std::vector<std::uint8_t> new_png_data;
-    new_png_data.reserve(new_png_data.size() + gamma_chunk.size());
+    new_png_data.reserve(png_data.size() + gamma_chunk.size());
     new_png_data.insert(new_png_data.end(), png_data.begin(), png_data.begin() + insertion_point);
     new_png_data.insert(new_png_data.end(), gamma_chunk.begin(), gamma_chunk.end());
     new_png_data.insert(new_png_data.end(), png_data.begin() + insertion_point, png_data.end());
