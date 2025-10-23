@@ -97,7 +97,7 @@ impl fmt::Display for TypeID {
 
 trait BlorbReadOps {
     fn read32(&mut self) -> Result<u32, io::Error>;
-    fn typeid(&mut self) -> Result<TypeID, io::Error>;
+    fn read_typeid(&mut self) -> Result<TypeID, io::Error>;
 }
 
 trait BlorbWriteOps {
@@ -106,10 +106,10 @@ trait BlorbWriteOps {
 
 impl<R: Read> BlorbReadOps for R {
     fn read32(&mut self) -> Result<u32, io::Error> {
-        Ok(u32::from_be_bytes(*self.typeid()?.as_bytes()))
+        Ok(u32::from_be_bytes(*self.read_typeid()?.as_bytes()))
     }
 
-    fn typeid(&mut self) -> Result<TypeID, io::Error> {
+    fn read_typeid(&mut self) -> Result<TypeID, io::Error> {
         let mut bytes = [0; 4];
         self.read_exact(&mut bytes)?;
         Ok(TypeID(bytes))
@@ -217,13 +217,13 @@ impl Blorb {
     fn new<A: AsRef<path::Path>>(path: A) -> Result<Blorb, Error> {
         let mut f = fs::File::open(path)?;
 
-        if f.typeid()? != b"FORM".into() {
+        if f.read_typeid()? != b"FORM".into() {
             return Err(Error::NotABlorb);
         }
 
         let size = f.read32()?;
 
-        if f.typeid()? != b"IFRS".into() || f.typeid()? != b"RIdx".into() {
+        if f.read_typeid()? != b"IFRS".into() || f.read_typeid()? != b"RIdx".into() {
             return Err(Error::NotABlorb);
         }
 
@@ -236,7 +236,7 @@ impl Blorb {
         let mut resource_by_offset = BTreeMap::new();
 
         for _ in 0..num {
-            let usage = f.typeid()?.try_into()?;
+            let usage = f.read_typeid()?.try_into()?;
             let number = f.read32()?;
             let start = u64::from(f.read32()?);
 
@@ -280,7 +280,7 @@ impl Blorb {
         while f.stream_position()? < u64::from(size) + 8 {
             let pos = f.stream_position()?;
 
-            let chunktype = f.typeid()?;
+            let chunktype = f.read_typeid()?;
 
             if !is_valid_typeid(chunktype.as_bytes()) {
                 eprintln!("warning: invalid chunk type {chunktype} at offset 0x{pos:x}");
