@@ -38,9 +38,9 @@ enum Error {
     MissingAPal,
     #[error("invalid APal size: {0}")]
     InvalidAPalSize(usize),
-    #[error("APAl references image {0}, which does not exist")]
+    #[error("APal references image {0}, which does not exist")]
     MissingAPalImage(u32),
-    #[error("no APAl images found")]
+    #[error("no APal images found")]
     NoAPalImages,
     #[error("Exec resource already exists")]
     ExecExists,
