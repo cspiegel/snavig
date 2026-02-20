@@ -249,12 +249,15 @@ impl Blorb {
         let mut resources: BTreeMap<Resource, Chunk> = BTreeMap::new();
         let mut chunks = vec![];
 
-        let known_chunks = [
+        // Chunks we might run into which must be unique. If there are duplicates, a warning will be
+        // generated but the file will continue to be processed. The resulting file might be broken.
+        let known_chunks_unique = [
             b"IFhd", b"Plte", b"Fspc", b"RDes", b"IFmd", b"RelN",
-            b"Reso", b"APal", b"Loop", b"AUTH", b"(c) ", b"ANNO",
+            b"Reso", b"APal", b"Loop", b"AUTH", b"(c) ",
             b"SNam",
             b"BPal",
         ];
+
 
         // Per IFF:
         //
@@ -290,13 +293,8 @@ impl Blorb {
                 return Err(Error::DuplicateRIdx);
             }
 
-            // For the time being, all known chunks must be unique.
-            if known_chunks.contains(&chunktype.as_bytes()) {
-                if seen_unique_chunks.contains(&chunktype) {
-                    eprintln!("warning: found duplicate {chunktype} chunk at offset 0x{pos:x}");
-                }
-
-                seen_unique_chunks.insert(chunktype);
+            if known_chunks_unique.contains(&chunktype.as_bytes()) && !seen_unique_chunks.insert(chunktype) {
+                eprintln!("warning: found duplicate {chunktype} chunk at offset 0x{pos:x}");
             }
 
             let size = f.read32()?;
@@ -350,7 +348,7 @@ impl Blorb {
             } else {
                 if let Some(expected_usage) = expected_usage {
                     eprintln!("warning: found {chunktype} chunk at offset 0x{pos:x}, but it is not referenced in RIdx (expected usage: {expected_usage})");
-                } else if !known_chunks.contains(&chunktype.as_bytes()) {
+                } else if !known_chunks_unique.contains(&chunktype.as_bytes()) && chunktype != b"ANNO".into() {
                     if chunktype == b"FORM".into() && chunk.len() >= 4 {
                         let typedata = TypeID::from(&[chunk[0], chunk[1], chunk[2], chunk[3]]);
                         eprintln!("warning: copying unknown FORM chunk: {typedata} at offset 0x{pos:x}");
