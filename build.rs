@@ -1,9 +1,26 @@
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
+    set_git_hash();
     build_c_library();
     build_bindings();
+}
+
+fn set_git_hash() {
+    if let Some(hash) = Command::new("git")
+        .args(["describe", "--always", "--dirty"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    {
+        println!("cargo:rustc-env=GIT_HASH={hash}");
+    }
+
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/index");
 }
 
 fn build_c_library() {

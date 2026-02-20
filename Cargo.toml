@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.16", features = ["derive"] }
+jiff = "0.2.20"
 oxipng = "10.1.0"
 rayon = "1.10.0"
 regex = "1.10.6"
