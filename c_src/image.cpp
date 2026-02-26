@@ -34,7 +34,7 @@ const std::optional<std::array<std::uint8_t, 16>> find_gamma_chunk(const std::ui
 {
     std::size_t position = 8;
 
-    while (position + 8 < data_size) {
+    while (position + 8 <= data_size) {
         std::uint32_t chunk_data_length = be32(&png_data[position]);
         const std::uint8_t *chunk_type = &png_data[position + 4];
 
