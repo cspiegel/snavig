@@ -258,7 +258,6 @@ impl Blorb {
             b"BPal",
         ];
 
-
         // Per IFF:
         //
         // A "type ID", "property name", "FORM type", or any other IFF identifier is a 32-bit
