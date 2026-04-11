@@ -43,6 +43,9 @@ std::optional<std::array<std::uint8_t, 16>> find_gamma_chunk(const std::uint8_t 
         }
 
         if (std::memcmp(chunk_type, "gAMA", 4) == 0) {
+            if (chunk_data_length != 4) {
+                return std::nullopt;
+            }
             std::array<std::uint8_t, 16> gamma;
             std::copy_n(&png_data[position], 16, gamma.begin());
             return gamma;
