@@ -1,5 +1,5 @@
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::fs;
 use std::io::{self, IsTerminal, Read, Seek, Write};
@@ -73,7 +73,7 @@ impl CheckedWithResult for u32 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct TypeID([u8; 4]);
 
 impl TypeID {
@@ -276,8 +276,8 @@ impl Blorb {
             }).is_some()
         };
 
-        let mut seen_unique_chunks = BTreeSet::new();
-        let mut chunk_offsets = BTreeSet::new();
+        let mut seen_unique_chunks = HashSet::new();
+        let mut chunk_offsets = HashSet::new();
 
         while f.stream_position()? < u64::from(size) + 8 {
             let pos = f.stream_position()?;
@@ -416,7 +416,7 @@ impl Blorb {
         }
 
         let mut converted_picts = BTreeMap::new();
-        let mut image_cache = BTreeMap::new();
+        let mut image_cache = HashMap::new();
         let mut bpal_chunkdata = Vec::new();
 
         println!("Converting images...");
