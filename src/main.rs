@@ -246,7 +246,7 @@ impl Blorb {
             }
         }
 
-        let mut resources: BTreeMap<Resource, Chunk> = BTreeMap::new();
+        let mut resources = BTreeMap::new();
         let mut chunks = vec![];
 
         // Chunks we might run into which must be unique. If there are duplicates, a warning will be
