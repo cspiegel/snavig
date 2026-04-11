@@ -30,7 +30,7 @@ static std::uint32_t be32(const uint8_t *base)
            (static_cast<std::uint32_t>(base[3]) <<  0);
 }
 
-const std::optional<std::array<std::uint8_t, 16>> find_gamma_chunk(const std::uint8_t *png_data, std::size_t data_size)
+std::optional<std::array<std::uint8_t, 16>> find_gamma_chunk(const std::uint8_t *png_data, std::size_t data_size)
 {
     std::size_t position = 8;
 
