@@ -465,15 +465,10 @@ impl Blorb {
             return Err(Error::InvalidAPalSize(apal.data.len()));
         }
 
-        let mut apal_images = BTreeSet::new();
-        let mut reader = io::Cursor::new(&apal.data);
-        loop {
-            match reader.read32() {
-                Ok(id) => apal_images.insert(id),
-                Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => break,
-                Err(e) => return Err(e.into())
-            };
-        }
+        let apal_images = apal.data
+            .chunks_exact(4)
+            .map(|c| u32::from_be_bytes(c.try_into().unwrap()))
+            .collect();
 
         Ok(apal_images)
     }
