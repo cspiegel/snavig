@@ -527,10 +527,14 @@ impl Blorb {
         // palettes, as that will break its functionality. In the
         // absence of an APal chunk (or if the chunk is empty), the
         // specific layouts of images' palettes are not important.
-        if matches!(Self::find_apal_images(&self.chunks), Ok(images) if !images.is_empty()) {
-            options.color_type_reduction = false;
-            options.palette_reduction = false;
-        }
+        match Self::find_apal_images(&self.chunks) {
+            Ok(images) if !images.is_empty() => {
+                options.color_type_reduction = false;
+                options.palette_reduction = false;
+            }
+            Ok(_) | Err(Error::MissingAPal) => (),
+            Err(e) => Err(e)?,
+        };
 
         Self::compress_png_chunks(picts, &options, "Compressing images")
     }
