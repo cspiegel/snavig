@@ -429,10 +429,11 @@ impl Blorb {
                     let new_id = match image_cache.get(&converted) {
                         Some(val) => *val,
                         None => {
-                            converted_picts.insert(converted_id, Chunk::new(b"PNG ", converted.as_slice()));
+                            let current_id = converted_id;
                             converted_id = converted_id.plus(1)?;
-                            image_cache.insert(converted, converted_id - 1);
-                            converted_id - 1
+                            converted_picts.insert(current_id, Chunk::new(b"PNG ", converted.as_slice()));
+                            image_cache.insert(converted, current_id);
+                            current_id
                         }
                     };
 
