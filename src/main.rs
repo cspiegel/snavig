@@ -48,6 +48,8 @@ enum Error {
     UnknownStoryType,
     #[error("integer overflow")]
     IntegerOverflow,
+    #[error("chunk size exceeds form size")]
+    ChunkOverrunsForm,
     #[error(transparent)]
     Image(#[from] image::Error),
     #[error(transparent)]
@@ -221,7 +223,7 @@ impl Blorb {
             return Err(Error::NotABlorb);
         }
 
-        let size = f.read32()?;
+        let form_size = f.read32()?;
 
         if f.read_typeid()? != b"IFRS".into() || f.read_typeid()? != b"RIdx".into() {
             return Err(Error::NotABlorb);
@@ -279,7 +281,7 @@ impl Blorb {
         let mut seen_unique_chunks = HashSet::new();
         let mut chunk_offsets = HashSet::new();
 
-        while f.stream_position()? < u64::from(size) + 8 {
+        while f.stream_position()? < u64::from(form_size) + 8 {
             let pos = f.stream_position()?;
 
             let chunktype = f.read_typeid()?;
@@ -301,6 +303,10 @@ impl Blorb {
             f.read_exact(&mut chunk)?;
             if size % 2 == 1 {
                 f.seek(io::SeekFrom::Current(1))?;
+            }
+
+            if f.stream_position()? > u64::from(form_size) + 8 {
+                return Err(Error::ChunkOverrunsForm);
             }
 
             let expected_usage = if chunktype == b"FORM".into() && chunk.len() >= 4 && &chunk[0..4] == b"AIFF" {
