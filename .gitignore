@@ -1,0 +1,7 @@
+/target/
+/vgcore.*
+/.cache/
+/compile_commands.json
+*.blb
+*.zblorb
+*.z6
