@@ -315,7 +315,7 @@ impl Blorb {
                 match chunktype.as_bytes() {
                     b"PNG " | b"Rect" | b"JPEG" => Some(ResourceUsage::Pict),
 
-                    b"OGGV" | b"MOD " | b"SONG" => Some(ResourceUsage::Snd),
+                    b"MP3 " | b"OGGV" | b"MOD " | b"SONG" => Some(ResourceUsage::Snd),
 
                     b"TEXT" | b"BINA" => Some(ResourceUsage::Data),
 
@@ -326,7 +326,7 @@ impl Blorb {
                     b"GIF " => Some(ResourceUsage::Pict),
 
                     // The Blorb specification says "WAV " but Adrift uses "WAVE"
-                    b"WAVE" | b"WAV " | b"MIDI" | b"MP3 " => Some(ResourceUsage::Snd),
+                    b"WAVE" | b"WAV " | b"MIDI" => Some(ResourceUsage::Snd),
 
                     _ => None
                 }
