@@ -13,6 +13,7 @@ enum CError {
     UnableToSavePNG,
     InvalidPNG,
     ExistingGamma,
+    OutOfMemory,
 };
 
 struct Vector {

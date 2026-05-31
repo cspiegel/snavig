@@ -94,13 +94,17 @@ CImage *new_image(const unsigned char *data, std::size_t len)
 {
     QImage image;
 
-    if (!image.loadFromData(data, len, "PNG")) {
+    try {
+        if (!image.loadFromData(data, len, "PNG")) {
+            return nullptr;
+        }
+
+        auto gamma_chunk = find_gamma_chunk(data, len);
+
+        return new CImage { std::move(image), std::move(gamma_chunk) };
+    } catch (...) {
         return nullptr;
     }
-
-    auto gamma_chunk = find_gamma_chunk(data, len);
-
-    return new CImage { std::move(image), std::move(gamma_chunk) };
 }
 
 void delete_image(CImage *image)
@@ -116,50 +120,54 @@ Vector convert_palette_c(const CImage *apal_image_, const CImage *palette)
         .error = None,
     };
 
-    QImage apal_image = apal_image_->image;
-    if (palette->image.format() != QImage::Format_Indexed8) {
-        vector.error = PaletteNotIndexed;
-        return vector;
-    }
-
-    auto dst = apal_image.colorTable();
-    auto src = palette->image.colorTable();
-
-    for (qsizetype i = 2; i < qMin(src.size(), dst.size()); i++) {
-        dst[i] = src[i];
-    }
-
-    apal_image.setColorTable(dst);
-
-    QByteArray ba;
-    QBuffer buffer(&ba);
-
-    if (!buffer.open(QIODevice::WriteOnly)) {
-        vector.error = UnableToOpenQBuffer;
-        return vector;
-    }
-
-    if (!apal_image.save(&buffer, "PNG", 100)) {
-        vector.error = UnableToSavePNG;
-        return vector;
-    }
-
-    if (palette->gamma_chunk.has_value()) {
-        try {
-            auto with_gamma = add_gamma_chunk(std::vector<std::uint8_t>(ba.begin(), ba.end()), *palette->gamma_chunk);
-
-            vector.data = new unsigned char[with_gamma.size()];
-            vector.len = with_gamma.size();
-            std::copy(with_gamma.begin(), with_gamma.end(), vector.data);
-        } catch (const InvalidPNGError &) {
-            vector.error = InvalidPNG;
-        } catch (const ExistingGammaError &) {
-            vector.error = ExistingGamma;
+    try {
+        QImage apal_image = apal_image_->image;
+        if (palette->image.format() != QImage::Format_Indexed8) {
+            vector.error = PaletteNotIndexed;
+            return vector;
         }
-    } else {
-        vector.data = new unsigned char[ba.size()];
-        vector.len = ba.size();
-        std::copy(ba.begin(), ba.end(), vector.data);
+
+        auto dst = apal_image.colorTable();
+        auto src = palette->image.colorTable();
+
+        for (qsizetype i = 2; i < qMin(src.size(), dst.size()); i++) {
+            dst[i] = src[i];
+        }
+
+        apal_image.setColorTable(dst);
+
+        QByteArray ba;
+        QBuffer buffer(&ba);
+
+        if (!buffer.open(QIODevice::WriteOnly)) {
+            vector.error = UnableToOpenQBuffer;
+            return vector;
+        }
+
+        if (!apal_image.save(&buffer, "PNG", 100)) {
+            vector.error = UnableToSavePNG;
+            return vector;
+        }
+
+        if (palette->gamma_chunk.has_value()) {
+            try {
+                auto with_gamma = add_gamma_chunk(std::vector<std::uint8_t>(ba.begin(), ba.end()), *palette->gamma_chunk);
+
+                vector.data = new unsigned char[with_gamma.size()];
+                vector.len = with_gamma.size();
+                std::copy(with_gamma.begin(), with_gamma.end(), vector.data);
+            } catch (const InvalidPNGError &) {
+                vector.error = InvalidPNG;
+            } catch (const ExistingGammaError &) {
+                vector.error = ExistingGamma;
+            }
+        } else {
+            vector.data = new unsigned char[ba.size()];
+            vector.len = ba.size();
+            std::copy(ba.begin(), ba.end(), vector.data);
+        }
+    } catch (const std::bad_alloc &) {
+        vector.error = OutOfMemory;
     }
 
     return vector;

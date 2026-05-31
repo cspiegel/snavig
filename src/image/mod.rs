@@ -16,6 +16,8 @@ pub enum Error {
     InvalidPNG,
     #[error("image already has gamma information")]
     ExistingGamma,
+    #[error("out of memory")]
+    OutOfMemory,
     #[error("unknown error in image code")]
     Unknown,
 }
@@ -48,6 +50,7 @@ pub fn convert_palette(apal_image: &Image, palette: &Image) -> Result<Vec<u8>, E
         image_impl::CError_UnableToSavePNG => return Err(Error::UnableToSavePNG),
         image_impl::CError_InvalidPNG => return Err(Error::InvalidPNG),
         image_impl::CError_ExistingGamma => return Err(Error::ExistingGamma),
+        image_impl::CError_OutOfMemory => return Err(Error::OutOfMemory),
         image_impl::CError_None => (),
         _ => return Err(Error::Unknown),
     }
